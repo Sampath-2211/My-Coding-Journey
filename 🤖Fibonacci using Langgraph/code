@@ -1,0 +1,90 @@
+from langgraph.graph import StateGraph, END
+from typing import TypedDict, List
+
+class State(TypedDict):
+    current: int
+    previous: int
+    count: int
+    target: int
+    series: List[int]
+
+def initialize_node(state: State):
+    print("Initialize Node: Setting up Fibonacci series")
+    print(f"Starting: F(0) = 0, F(1) = 1")
+    return {
+        "current": 1,
+        "previous": 0,
+        "count": 2,
+        "series": [0, 1]
+    }
+
+def calculate_node(state: State):
+    next_fib = state["current"] + state["previous"]
+    new_series = state["series"] + [next_fib]
+    new_count = state["count"] + 1
+    
+    print(f"Calculate Node: F({state['count']}) = {state['current']} + {state['previous']} = {next_fib}")
+    
+    return {
+        "current": next_fib,
+        "previous": state["current"],
+        "count": new_count,
+        "series": new_series
+    }
+
+def check_node(state: State):
+    print(f"Check Node: Generated {state['count']} numbers, target is {state['target']}")
+    
+    if state["count"] < state["target"]:
+        print("Continue generating...")
+        return {"count": state["count"]}
+    else:
+        print("Target reached!")
+        return {"count": state["count"]}
+
+def route_decision(state: State):
+    if state["count"] < state["target"]:
+        return "calculate"  # Continue loop
+    else:
+        return END         # End workflow
+
+# Create graph
+workflow = StateGraph(State)
+workflow.add_node("initialize", initialize_node)
+workflow.add_node("calculate", calculate_node)
+workflow.add_node("check", check_node)
+
+# Set entry point
+workflow.set_entry_point("initialize")
+
+# Add edges
+workflow.add_edge("initialize", "calculate")
+workflow.add_edge("calculate", "check")
+
+# Conditional edge - check node can loop back to calculate or end
+workflow.add_conditional_edges("check", route_decision, {
+    "calculate": "calculate",  # Loop back
+    END: END                   # End workflow
+})
+
+app = workflow.compile()
+
+# Input
+n = int(input("How many Fibonacci numbers to generate? "))
+
+input_state = {
+    "current": 0,
+    "previous": 0,
+    "count": 0,
+    "target": n,
+    "series": []
+}
+
+print(f"\nGenerating first {n} Fibonacci numbers:")
+print("=" * 50)
+
+final_state = app.invoke(input_state)
+
+print("=" * 50)
+print(f"Fibonacci Series: {final_state['series']}")
+print(f"Last number: F({len(final_state['series'])-1}) = {final_state['current']}")
