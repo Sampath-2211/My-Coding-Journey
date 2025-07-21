@@ -1,9 +1,8 @@
-# Fibonacci Implementation Comparison
+# Fibonacci with LangGraph: A Workflow Approach
 
-## Overview
-This document compares two different approaches to generate Fibonacci numbers: a traditional recursive approach and a LangGraph workflow-based approach.
+## Traditional Fibonacci Implementation
 
-## Implementation 1: Traditional Recursive Fibonacci
+The standard recursive approach calculates Fibonacci numbers by repeatedly calling itself:
 
 ```python
 def fib(x):
@@ -11,119 +10,96 @@ def fib(x):
         return x
     else:
         return fib(x-1)+fib(x-2)
+
+x = int(input("Enter the number: "))
+print("Here is the series:")
+for i in range (0,x):
+    print(fib(i))
 ```
 
-### Characteristics:
-- **Type**: Recursive function
-- **Approach**: Direct mathematical implementation
-- **Storage**: No intermediate storage, recalculates values
-- **Output**: Prints each Fibonacci number individually
+This method recalculates the same values multiple times. For example, to find F(5), it calculates F(3) twice, F(2) three times, and F(1) five times.
 
-### Time & Space Complexity:
-- **Time Complexity**: O(2^n) - Exponential (very slow for large n)
-- **Space Complexity**: O(n) - Due to recursive call stack
+## LangGraph Workflow Implementation
 
-### Pros:
-- Simple and intuitive code
-- Direct mathematical representation
-- Easy to understand
+The LangGraph version transforms Fibonacci calculation into a structured workflow with three distinct nodes:
 
-### Cons:
-- Extremely inefficient for large numbers
-- Recalculates same values multiple times
-- No visibility into the process
-- Stack overflow risk for large inputs
+### Node Structure
 
-## Implementation 2: LangGraph Workflow Fibonacci
+**Initialize Node**: Sets up the starting values F(0)=0, F(1)=1
 ```python
-# Uses StateGraph with initialize, calculate, and check nodes
-workflow = StateGraph(State)
-workflow.add_node("initialize", initialize_node)
-workflow.add_node("calculate", calculate_node)
-workflow.add_node("check", check_node)
+def initialize_node(state: State):
+    return {
+        "current": 1,
+        "previous": 0,
+        "count": 2,
+        "series": [0, 1]
+    }
 ```
 
-### Characteristics:
-- **Type**: Workflow-based with state management
-- **Approach**: Iterative with explicit state tracking
-- **Storage**: Maintains complete series and intermediate values
-- **Output**: Shows step-by-step calculation process
-
-### Time & Space Complexity:
-- **Time Complexity**: O(n) - Linear time
-- **Space Complexity**: O(n) - Stores complete series
-
-### Pros:
-- Highly efficient - calculates each number only once
-- Complete visibility into the process
-- Stores entire series for reference
-- Scalable to large numbers
-- Educational - shows each step clearly
-- Modular design with separate concerns
-
-### Cons:
-- More complex code structure
-- Requires LangGraph library
-- Higher memory usage (stores all numbers)
-- Overkill for simple Fibonacci calculation
-
-## Performance Comparison
-
-| Input Size | Traditional Recursive | LangGraph Workflow |
-|------------|----------------------|-------------------|
-| n = 10     | ~109 function calls  | 10 iterations     |
-| n = 20     | ~21,891 function calls | 20 iterations   |
-| n = 30     | ~2.7 million calls   | 30 iterations     |
-| n = 40     | ~300+ million calls  | 40 iterations     |
-
-## When to Use Each
-
-### Use Traditional Recursive When:
-- Learning recursion concepts
-- Simple, one-time calculations
-- Small input values (n < 20)
-- Academic/educational purposes
-
-### Use LangGraph Workflow When:
-- Need to see the calculation process
-- Working with large Fibonacci numbers
-- Want to store and analyze the complete series
-- Building complex workflows that include Fibonacci as a component
-- Performance is critical
-- Need audit trail of calculations
-
-## Key Takeaways
-
-1. **Efficiency**: LangGraph approach is exponentially faster
-2. **Visibility**: LangGraph shows step-by-step process
-3. **Scalability**: LangGraph handles large inputs easily
-4. **Complexity**: Traditional is simpler code, LangGraph is more structured
-5. **Use Case**: Traditional for learning, LangGraph for production/analysis
-
-## Example Output Comparison
-
-### Traditional Recursive (n=5):
-```
-0
-1
-1
-2
-3
+**Calculate Node**: Generates the next Fibonacci number using the two previous values
+```python
+def calculate_node(state: State):
+    next_fib = state["current"] + state["previous"]
+    return {
+        "current": next_fib,
+        "previous": state["current"],
+        "count": new_count,
+        "series": new_series
+    }
 ```
 
-### LangGraph Workflow (n=5):
+**Check Node**: Determines whether to continue or stop based on target count
+```python
+def check_node(state: State):
+    if state["count"] < state["target"]:
+        return "continue"
+    else:
+        return "stop"
 ```
-Initialize Node: Setting up the Fibonacci series
-Starting: F(0) = 0, F(1) = 1
+
+### Workflow Flow
+```
+Initialize → Calculate → Check → (Loop back to Calculate OR End)
+```
+
+## Key Improvements
+
+### Eliminates Redundant Calculations
+Each Fibonacci number is calculated exactly once. The workflow maintains the previous two values in state, eliminating the exponential time complexity of the recursive approach.
+
+### Process Transparency  
+Every step is visible and logged:
+```
+Initialize Node: Setting up Fibonacci series
 Calculate Node: F(2) = 1 + 0 = 1
-Check Node: Generated 3 numbers, target is 5
 Calculate Node: F(3) = 1 + 1 = 2
-Check Node: Generated 4 numbers, target is 5
 Calculate Node: F(4) = 2 + 1 = 3
-Check Node: Generated 5 numbers, target is 5
-Target reached!
-Fibonacci Series: [0, 1, 1, 2, 3]
-Last number: F(4) = 3
 ```
 
-The LangGraph approach provides much more insight into the calculation process while being significantly more efficient.
+### Complete Series Storage
+The workflow maintains the entire Fibonacci series in memory, allowing for immediate access to any previously calculated value without recomputation.
+
+### State Management
+All intermediate values, counters, and the complete series are managed through a structured state system:
+```python
+class State(TypedDict):
+    current: int      # Current Fibonacci number
+    previous: int     # Previous Fibonacci number  
+    count: int        # Numbers generated so far
+    target: int       # Target count to generate
+    series: List[int] # Complete series
+```
+
+### Scalable Performance
+The linear time complexity O(n) makes this approach practical for generating large Fibonacci sequences. Calculating F(100) takes 100 iterations instead of 2^100 recursive calls.
+
+### Modular Design
+Each operation (initialization, calculation, checking) is isolated in its own node, making the code maintainable and extensible. Additional processing nodes can be easily added to the workflow.
+
+## Execution Example
+
+For generating 5 Fibonacci numbers:
+- **Traditional method**: 15 function calls (with overlapping calculations)
+- **LangGraph method**: 5 clean iterations with complete audit trail
+
+The workflow approach transforms a computationally expensive recursive problem into an efficient, transparent, and maintainable solution.
